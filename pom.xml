@@ -45,7 +45,6 @@
 
         <quarkus.version>3.1.0.Final</quarkus.version>
         <quarkus.build.version>3.0.3.Final</quarkus.build.version>
-        <graal-sdk.version>22.3.2</graal-sdk.version>
 
         <project.build-time>${timestamp}</project.build-time>
 

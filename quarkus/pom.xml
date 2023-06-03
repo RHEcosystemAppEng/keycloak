@@ -55,11 +55,6 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <dependency>
-                <groupId>org.graalvm.sdk</groupId>
-                <artifactId>graal-sdk</artifactId>
-                <version>${graal-sdk.version}</version>
-            </dependency>
             
             <!-- Override the dependencies below to use the versions used by Keycloak -->
             <dependency>

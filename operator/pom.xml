@@ -38,6 +38,7 @@
         <quarkus.operator.sdk.version>6.0.1</quarkus.operator.sdk.version>
         <quarkus.operator.build.version>3.0.0.Final</quarkus.operator.build.version>
         <quarkus.container-image.group>keycloak</quarkus.container-image.group>
+        <graal-sdk.version>22.3.2</graal-sdk.version>
     </properties>
     
     <dependencyManagement>
