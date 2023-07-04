@@ -24,8 +24,8 @@ import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
+import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import io.javaoperatorsdk.operator.Operator;
-import io.javaoperatorsdk.operator.api.config.ConfigurationServiceProvider;
 import io.javaoperatorsdk.operator.api.reconciler.Reconciler;
 import io.quarkiverse.operatorsdk.runtime.QuarkusConfigurationService;
 import io.quarkus.logging.Log;
@@ -99,7 +99,8 @@ public abstract class BaseOperatorTest {
             return "localhost";
         }
     });
-    createCRDs();
+    Log.info("Creating CRDs");
+    createCRDs(k8sclient);
     createNamespace();
     isOpenShift = isOpenShift(k8sclient);
 
@@ -137,15 +138,9 @@ public abstract class BaseOperatorTest {
             .inNamespace(namespace).delete();
   }
 
-  private static void createCRDs() {
-    Log.info("Creating CRDs");
-    try {
-      K8sUtils.set(k8sclient, new FileInputStream(TARGET_KUBERNETES_GENERATED_YML_FOLDER + "keycloaks.k8s.keycloak.org-v1.yml"));
-      K8sUtils.set(k8sclient, new FileInputStream(TARGET_KUBERNETES_GENERATED_YML_FOLDER + "keycloakrealmimports.k8s.keycloak.org-v1.yml"));
-    } catch (Exception e) {
-      Log.warn("Failed to create Keycloak CRD, retrying", e);
-      createCRDs();
-    }
+  static void createCRDs(KubernetesClient client) throws FileNotFoundException {
+    K8sUtils.set(client, new FileInputStream(TARGET_KUBERNETES_GENERATED_YML_FOLDER + "keycloaks.k8s.keycloak.org-v1.yml"));
+    K8sUtils.set(client, new FileInputStream(TARGET_KUBERNETES_GENERATED_YML_FOLDER + "keycloakrealmimports.k8s.keycloak.org-v1.yml"));
   }
 
   private static void registerReconcilers() {
@@ -158,14 +153,14 @@ public abstract class BaseOperatorTest {
   }
 
   private static void createOperator() {
-    configuration.getClientConfiguration().setNamespace(namespace);
-    ConfigurationServiceProvider.reset();
-    operator = new Operator(k8sclient, configuration);
+    operator = new Operator(overrider -> overrider.withKubernetesClient(k8sclient));
   }
 
   private static void createNamespace() {
     Log.info("Creating Namespace " + namespace);
     k8sclient.resource(new NamespaceBuilder().withNewMetadata().addToLabels("app","keycloak-test").withName(namespace).endMetadata().build()).create();
+    // ensure that the client defaults to the namespace - eventually most of the test code usage of inNamespace can be removed
+    k8sclient = k8sclient.adapt(NamespacedKubernetesClient.class).inNamespace(namespace);
   }
 
   private static void calculateNamespace() {

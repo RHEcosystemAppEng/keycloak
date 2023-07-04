@@ -23,9 +23,14 @@ import io.fabric8.kubernetes.api.model.LocalObjectReferenceBuilder;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.fabric8.kubernetes.api.model.SecretKeySelectorBuilder;
+import io.fabric8.kubernetes.api.model.Service;
+import io.fabric8.kubernetes.api.model.ServicePort;
+import io.fabric8.kubernetes.api.model.apps.StatefulSet;
+import io.fabric8.kubernetes.api.model.apps.StatefulSetBuilder;
 import io.fabric8.kubernetes.api.model.apps.StatefulSetSpecBuilder;
 import io.quarkus.logging.Log;
 import io.quarkus.test.junit.QuarkusTest;
+
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -38,6 +43,7 @@ import org.keycloak.operator.crds.v2alpha1.deployment.Keycloak;
 import org.keycloak.operator.crds.v2alpha1.deployment.KeycloakStatusCondition;
 import org.keycloak.operator.crds.v2alpha1.deployment.ValueOrSecret;
 import org.keycloak.operator.crds.v2alpha1.deployment.spec.HostnameSpecBuilder;
+import org.keycloak.operator.testsuite.utils.CRAssert;
 import org.keycloak.operator.testsuite.utils.K8sUtils;
 
 import java.nio.charset.StandardCharsets;
@@ -204,7 +210,21 @@ public class KeycloakDeploymentTest extends BaseOperatorTest {
         try {
             var kc = getDefaultKeycloakDeployment();
             var deploymentName = kc.getMetadata().getName();
-            deployKeycloak(k8sclient, kc, true);
+
+            // create a dummy StatefulSet representing the pre-multiinstance state that we'll be forced to delete
+            StatefulSet statefulSet = new StatefulSetBuilder().withMetadata(kc.getMetadata()).editMetadata()
+                    .addToLabels(Constants.DEFAULT_LABELS).endMetadata().withNewSpec().withNewSelector()
+                    .withMatchLabels(Constants.DEFAULT_LABELS).endSelector().withServiceName("foo").withReplicas(0)
+                    .withNewTemplate().withNewMetadata().withLabels(Constants.DEFAULT_LABELS).endMetadata()
+                    .withNewSpec().addNewContainer().withName("pause").withImage("registry.k8s.io/pause:3.1")
+                    .endContainer().endSpec().endTemplate().endSpec().build();
+            k8sclient.resource(statefulSet).create();
+
+            // start will not be successful because the statefulSet is in the way
+            deployKeycloak(k8sclient, kc, false);
+            // once the statefulset is owned by the keycloak it will be picked up by the informer
+            k8sclient.resource(statefulSet).accept(s -> s.addOwnerReference(k8sclient.resource(kc).get()));
+            waitForKeycloakToBeReady(k8sclient, kc);
 
             Log.info("Trying to delete deployment");
             assertThat(k8sclient.apps().statefulSets().withName(deploymentName).delete()).isNotNull();
@@ -539,6 +559,31 @@ public class KeycloakDeploymentTest extends BaseOperatorTest {
     }
 
     @Test
+    public void testInvalidCustomImageHasErrorMessage() {
+
+        try {
+            var kc = getDefaultKeycloakDeployment();
+            kc.getSpec().setImage("does-not-exist");
+
+            deployKeycloak(k8sclient, kc, false);
+
+            var crSelector = k8sclient.resource(kc);
+
+            Awaitility.await().atMost(3, MINUTES).pollDelay(1, SECONDS).ignoreExceptions().untilAsserted(() -> {
+                Keycloak current = crSelector.get();
+                CRAssert.assertKeycloakStatusCondition(current, KeycloakStatusCondition.READY, false);
+                CRAssert.assertKeycloakStatusCondition(current, KeycloakStatusCondition.HAS_ERRORS, true,
+                        String.format("Waiting for %s/%s-0 due to ErrImage", k8sclient.getNamespace(),
+                                kc.getMetadata().getName()));
+            });
+
+        } catch (Exception e) {
+            savePodLogs();
+            throw e;
+        }
+    }
+
+    @Test
     public void testHttpRelativePathWithPlainValue() {
         try {
             var kc = getDefaultKeycloakDeployment();
@@ -673,12 +718,16 @@ public class KeycloakDeploymentTest extends BaseOperatorTest {
     }
 
     private void assertKeycloakAccessibleViaService(Keycloak kc, boolean https, int port) {
-        var service = new KeycloakService(k8sclient, kc);
         Awaitility.await()
                 .ignoreExceptions()
                 .untilAsserted(() -> {
                     String protocol = https ? "https" : "http";
-                    String url = protocol + "://" + service.getName() + "." + namespace + ":" + port;
+
+                    String serviceName = KeycloakService.getServiceName(kc);
+                    assertThat(k8sclient.resources(Service.class).withName(serviceName).require().getSpec().getPorts()
+                            .stream().map(ServicePort::getName).anyMatch(protocol::equals));
+
+                    String url = protocol + "://" + serviceName + "." + namespace + ":" + port;
                     Log.info("Checking url: " + url);
 
                     var curlOutput = K8sUtils.inClusterCurl(k8sclient, namespace, url);

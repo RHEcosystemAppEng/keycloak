@@ -26,7 +26,7 @@ button#kc-join-groups-button {
 
 .join-group-dialog-row-m-disabled {
   pointer-events: none;
-  color: var(--pf-global--disabled-color--200);
+  color: var(--pf-global--Color--200);
 }
 
 .kc-who-will-appear-button {
@@ -44,10 +44,6 @@ button#kc-join-groups-button {
 
 .kc-consents-chip-group .pf-c-chip-group__list-item {
   margin-right: 0px;
-}
-
-#consents-chip-text.pf-c-chip-text {
-  font-size: var(--pf-c-table--cell--FontSize);
 }
 
 .kc-consents-chip > .pf-c-chip__text {
@@ -163,7 +159,7 @@ article.pf-c-card.pf-m-flat.kc-available-idps > div > div > h1 {
 }
 
 .user-attribute-search-form-key-value {
-  margin-bottom: .5rem;
+  margin-bottom: 0.5rem;
 }
 
 .user-attribute-search-form-left {
