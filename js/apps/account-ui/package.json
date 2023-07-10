@@ -1,5 +1,6 @@
 {
   "name": "account-ui",
+  "type": "module",
   "scripts": {
     "dev": "wireit",
     "build": "wireit",
@@ -11,7 +12,7 @@
     "@patternfly/react-core": "^4.276.8",
     "@patternfly/react-icons": "^4.93.6",
     "@patternfly/react-table": "^4.113.0",
-    "i18next": "^23.2.6",
+    "i18next": "^23.2.8",
     "i18next-http-backend": "^2.2.1",
     "keycloak-js": "workspace:*",
     "keycloak-masthead": "workspace:*",
@@ -29,7 +30,8 @@
     "@types/react": "^18.2.14",
     "@types/react-dom": "^18.2.6",
     "@vitejs/plugin-react-swc": "^3.3.2",
-    "vite": "^4.3.9",
+    "@keycloak/keycloak-admin-client": "workspace:*",
+    "vite": "^4.4.2",
     "vite-plugin-checker": "^0.6.1"
   },
   "wireit": {
@@ -38,7 +40,8 @@
       "dependencies": [
         "../../libs/ui-shared:build",
         "../../libs/keycloak-masthead:build",
-        "../../libs/keycloak-js:build"
+        "../../libs/keycloak-js:build",
+        "../../libs/keycloak-admin-client:build"
       ]
     },
     "preview": {
@@ -46,7 +49,8 @@
       "dependencies": [
         "../../libs/ui-shared:build",
         "../../libs/keycloak-masthead:build",
-        "../../libs/keycloak-js:build"
+        "../../libs/keycloak-js:build",
+        "../../libs/keycloak-admin-client:build"
       ]
     },
     "build": {
@@ -54,7 +58,8 @@
       "dependencies": [
         "../../libs/ui-shared:build",
         "../../libs/keycloak-masthead:build",
-        "../../libs/keycloak-js:build"
+        "../../libs/keycloak-js:build",
+        "../../libs/keycloak-admin-client:build"
       ]
     },
     "lint": {
@@ -62,7 +67,8 @@
       "dependencies": [
         "../../libs/ui-shared:build",
         "../../libs/keycloak-masthead:build",
-        "../../libs/keycloak-js:build"
+        "../../libs/keycloak-js:build",
+        "../../libs/keycloak-admin-client:build"
       ]
     }
   }
